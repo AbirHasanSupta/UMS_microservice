@@ -1,3 +1,3 @@
 # UMS_microservice
 
-Let’s start
+University Management System microservices project for learning Docker, Django microservices, and inter-service communication.
