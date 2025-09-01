@@ -17,15 +17,56 @@ services:
     command: >
       sh -c "python wait_for_db.py &&
              python manage.py migrate &&
-             python manage.py runserver 0.0.0.0:8000"
+             python manage.py runserver 0.0.0.0:8001"
     volumes:
       - ./services/auth_service:/app
-    ports:
-      - "8000:8000"
+    ports: []
     env_file:
       - ./services/auth_service/.env
     depends_on:
       - auth-db
 
+  course-db:
+    image: postgres:15
+    env_file:
+      - ./services/course_service/.env.db
+    ports:
+      - "5434:5432"
+    volumes:
+      - course_db_data:/var/lib/postgresql/data
+
+  course-service:
+    build: ./services/course_service
+    command: >
+      sh -c "python wait_for_db.py &&
+             python manage.py migrate &&
+             python manage.py runserver 0.0.0.0:8002"
+    ports:
+      - "8002:8002"
+    env_file:
+      - ./services/course_service/.env
+    depends_on:
+      - course-db
+
+  kong:
+    build: ./kong
+    ports:
+      - "8000:8000"  # proxy
+      - "8443:8443"  # SSL proxy
+      - "8001:8001"  # admin
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /usr/local/kong/kong.yml
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+
+    depends_on:
+      - auth-service
+      - course-service
+
+
 volumes:
   auth_db_data:
+  course_db_data:
